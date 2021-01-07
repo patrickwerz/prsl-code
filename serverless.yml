@@ -1,0 +1,62 @@
+service: prsl-pwerz
+frameworkVersion: '2'
+
+custom:
+  name: Patrick Werz
+  email: pw@zoi.de 
+
+provider:
+  name: aws
+  region: eu-west-1
+  runtime: nodejs12.x
+  lambdaHashingVersion: 20201221
+  stackTags: # Optional CF stack tags
+    owner: patrick.werz@zoi.de
+  iamRoleStatements:
+    - Effect: Allow
+      Action: dynamodb:scan
+      Resource: !GetAtt RestaurantsTable.Arn  
+    - Effect: Allow
+      Action: execute-api:Invoke
+      Resource: arn:aws:execute-api:#{AWS::Region}:#{AWS::AccountId}:#{ApiGatewayRestApi}/${self:provider.stage}/GET/restaurants
+
+plugins:
+  - serverless-export-env
+  - serverless-pseudo-parameters
+
+functions:
+  get-index:
+    handler: functions/get-index.handler
+    events:
+      - http:
+          path: /
+          method: get
+    environment:
+      restaurants_api: https://#{ApiGatewayRestApi}.execute-api.#{AWS::Region}.amazonaws.com/${self:provider.stage}/restaurants      
+  
+  get-restaurants:
+    handler: functions/get-restaurants.handler
+    events:
+      - http:
+          path: /restaurants
+          method: get
+          authorizer: aws_iam
+    environment:
+      restaurants_table: !Ref RestaurantsTable
+
+resources:
+  Resources:
+    RestaurantsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: name
+            AttributeType: S
+        KeySchema:
+          - AttributeName: name
+            KeyType: HASH
+
+  Outputs:
+    RestaurantsTableName:
+      Value: !Ref RestaurantsTable
