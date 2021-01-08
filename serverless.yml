@@ -15,34 +15,35 @@ provider:
     stage: ${self:provider.stage}
   stackTags: # Optional CF stack tags
     owner: patrick.werz@zoi.de
-  iamRoleStatements:
-    - Effect: Allow
-      Action: dynamodb:scan
-      Resource: !GetAtt RestaurantsTable.Arn  
-    - Effect: Allow
-      Action: execute-api:Invoke
-      Resource: arn:aws:execute-api:#{AWS::Region}:#{AWS::AccountId}:#{ApiGatewayRestApi}/${self:provider.stage}/GET/restaurants
-    - Effect: Allow
-      Action: ssm:GetParameters*
-      Resource:
-       - arn:aws:ssm:#{AWS::Region}:#{AWS::AccountId}:parameter/${self:service}/${self:provider.stage}/get-restaurants/config
-       - arn:aws:ssm:#{AWS::Region}:#{AWS::AccountId}:parameter/${self:service}/${self:provider.stage}/search-restaurants/config
-       - arn:aws:ssm:#{AWS::Region}:#{AWS::AccountId}:parameter/${self:service}/${self:provider.stage}/search-restaurants/secretString
-    - Effect: Allow
-      Action: kms:Decrypt
-      Resource: ${ssm:/dev/kmsArn}
-    - Effect: Allow
-      Action: events:PutEvents
-      Resource: !GetAtt EventBus.Arn
-    - Effect: Allow
-      Action: sns:Publish
-      Resource: !Ref RestaurantNotificationTopic
+  # iamRoleStatements:
+  #   - Effect: Allow
+  #     Action: dynamodb:scan
+  #     Resource: !GetAtt RestaurantsTable.Arn  
+  #   - Effect: Allow
+  #     Action: execute-api:Invoke
+  #     Resource: arn:aws:execute-api:#{AWS::Region}:#{AWS::AccountId}:#{ApiGatewayRestApi}/${self:provider.stage}/GET/restaurants
+  #   - Effect: Allow
+  #     Action: ssm:GetParameters*
+  #     Resource:
+  #      - arn:aws:ssm:#{AWS::Region}:#{AWS::AccountId}:parameter/${self:service}/${self:provider.stage}/get-restaurants/config
+  #      - arn:aws:ssm:#{AWS::Region}:#{AWS::AccountId}:parameter/${self:service}/${self:provider.stage}/search-restaurants/config
+  #      - arn:aws:ssm:#{AWS::Region}:#{AWS::AccountId}:parameter/${self:service}/${self:provider.stage}/search-restaurants/secretString
+  #   - Effect: Allow
+  #     Action: kms:Decrypt
+  #     Resource: ${ssm:/dev/kmsArn}
+  #   - Effect: Allow
+  #     Action: events:PutEvents
+  #     Resource: !GetAtt EventBus.Arn
+  #   - Effect: Allow
+  #     Action: sns:Publish
+  #     Resource: !Ref RestaurantNotificationTopic
 
   
 
 plugins:
   - serverless-export-env
   - serverless-pseudo-parameters
+  - serverless-iam-roles-per-function
 
 functions:
   get-index:
@@ -51,6 +52,10 @@ functions:
       - http:
           path: /
           method: get
+    iamRoleStatements:
+    - Effect: Allow
+      Action: execute-api:Invoke
+      Resource: arn:aws:execute-api:#{AWS::Region}:#{AWS::AccountId}:#{ApiGatewayRestApi}/${self:provider.stage}/GET/restaurants      
     environment:
       restaurants_api:
         Fn::Join:
@@ -76,6 +81,14 @@ functions:
           authorizer: aws_iam
     environment:
       restaurants_table: !Ref RestaurantsTable
+    iamRoleStatements:
+      - Effect: Allow
+        Action: dynamodb:scan
+        Resource: !GetAtt RestaurantsTable.Arn
+      - Effect: Allow
+        Action: ssm:GetParameters*
+        Resource: arn:aws:ssm:#{AWS::Region}:#{AWS::AccountId}:parameter/${self:service}/${self:provider.stage}/get-restaurants/config  
+  
   search-restaurants:
     handler: functions/search-restaurants.handler
     events:
@@ -86,6 +99,18 @@ functions:
             name: CognitoAuthorizer
             type: COGNITO_USER_POOLS
             arn: !GetAtt CognitoUserPool.Arn
+    iamRoleStatements:
+      - Effect: Allow
+        Action: dynamodb:scan
+        Resource: !GetAtt RestaurantsTable.Arn
+      - Effect: Allow
+        Action: ssm:GetParameters*
+        Resource:
+          - arn:aws:ssm:#{AWS::Region}:#{AWS::AccountId}:parameter/${self:service}/${self:provider.stage}/search-restaurants/config
+          - arn:aws:ssm:#{AWS::Region}:#{AWS::AccountId}:parameter/${self:service}/${self:provider.stage}/search-restaurants/secretString
+      - Effect: Allow
+        Action: kms:Decrypt
+        Resource: ${ssm:/dev/kmsArn}
     environment:
       restaurants_table: !Ref RestaurantsTable
   place-order:
@@ -98,6 +123,10 @@ functions:
             name: CognitoAuthorizer
             type: COGNITO_USER_POOLS
             arn: !GetAtt CognitoUserPool.Arn
+    iamRoleStatements:
+      - Effect: Allow
+        Action: events:PutEvents
+        Resource: !GetAtt EventBus.Arn        
     environment:
       bus_name: !Ref EventBus
   notify-restaurant:
@@ -110,6 +139,13 @@ functions:
               - big-mouth
             detail-type:
               - order_placed
+    iamRoleStatements:
+      - Effect: Allow
+        Action: events:PutEvents
+        Resource: !GetAtt EventBus.Arn
+      - Effect: Allow
+        Action: sns:Publish
+        Resource: !Ref RestaurantNotificationTopic          
     environment:
       bus_name: !Ref EventBus
       restaurant_notification_topic: !Ref RestaurantNotificationTopic    
