@@ -1,14 +1,17 @@
 const EventBridge = require('aws-sdk/clients/eventbridge')
 const eventBridge = new EventBridge()
 const chance = require('chance').Chance()
+const Log = require('@dazn/lambda-powertools-logger')
+const wrap = require('@dazn/lambda-powertools-pattern-basic')
+
 
 const busName = process.env.bus_name
 
-module.exports.handler = async (event) => {
+module.exports.handler = wrap(async (event, context) => {
     const restaurantName = JSON.parse(event.body).restaurantName
 
     const orderId = chance.guid()
-    console.log(`placing order ID [${orderId}] to [${restaurantName}]`)
+    Log.debug('placing order...', { orderId, restaurantName })
 
     await eventBridge.putEvents({
         Entries: [{
@@ -22,7 +25,10 @@ module.exports.handler = async (event) => {
         }]
     }).promise()
 
-    console.log(`published 'order_placed' event into EventBridge`)
+    Log.debug(`published event into EventBridge`, {
+        eventType: 'order_placed',
+        busName
+    })
 
     const response = {
         statusCode: 200,
@@ -30,4 +36,4 @@ module.exports.handler = async (event) => {
     }
 
     return response
-}
+})

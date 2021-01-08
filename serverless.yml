@@ -3,7 +3,11 @@ frameworkVersion: '2'
 
 custom:
   name: Patrick Werz
-  email: pw@zoi.de 
+  email: pw@zoi.de
+  stage: ${opt:stage, self:provider.stage}
+  logLevel:
+    prod: ERROR
+    default: INFO
 
 provider:
   name: aws
@@ -11,6 +15,8 @@ provider:
   runtime: nodejs12.x
   lambdaHashingVersion: 20201221
   environment:
+    SAMPLE_DEBUG_LOG_RATE: 0.1
+    LOG_LEVEL: ${self:custom.logLevel.${self:custom.stage}, self:custom.logLevel.default}
     serviceName: ${self:service}
     stage: ${self:provider.stage}
   stackTags: # Optional CF stack tags
