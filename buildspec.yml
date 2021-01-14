@@ -5,7 +5,7 @@ phases:
       - npm ci
   build:
     commands:
-      - npm run test
+      - npx sls deploy
   post_build:
     commands:
-      - npx sls deploy
+      - npx run acceptance
