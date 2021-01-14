@@ -1,6 +1,5 @@
 service: prsl-pwerz
 frameworkVersion: '2'
-
 custom:
   name: Patrick Werz
   email: pw@zoi.de
