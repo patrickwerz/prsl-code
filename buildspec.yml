@@ -8,4 +8,4 @@ phases:
       - npx sls deploy
   post_build:
     commands:
-      - npx run acceptance
+      - npm run acceptance
