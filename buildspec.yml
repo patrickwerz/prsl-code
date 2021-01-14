@@ -1,0 +1,11 @@
+version: 0.1
+phases:
+  install:
+    commands:
+      - npm ci
+  build:
+    commands:
+      - npm run test
+  post_build:
+    commands:
+      - npx sls deploy
